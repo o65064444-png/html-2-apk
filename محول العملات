@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>محول العملات والحاسبة</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600&display=swap');
+
+    body {
+      font-family: 'Cairo', sans-serif;
+      text-align: center;
+      background: #000 url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80') no-repeat center center/cover;
+      color: #fff;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      transition: background-image 0.8s ease-in-out;
+    }
+
+    .container {
+      background: rgba(0,0,0,0.55);
+      margin: 20px auto;
+      padding: 20px;
+      border-radius: 20px;
+      max-width: 450px;
+      backdrop-filter: blur(4px);
+    }
+
+    input, select, button {
+      padding: 10px;
+      margin: 5px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    button {
+      background: #1abc9c;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover { background: #16a085; }
+
+    .converter {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .converter p {
+      width: 100%;
+      margin-top: 10px;
+      font-size: 1.2rem;
+    }
+
+    .calculator {
+      margin-top: 20px;
+    }
+
+    #calc-display {
+      width: 90%;
+      padding: 10px;
+      margin-bottom: 10px;
+      font-size: 1.2rem;
+      text-align: right;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 15px;
+      font-size: 1.2rem;
+      border-radius: 10px;
+      background: #34495e;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .btn:hover { background: #2c3e50; }
+    .op { background: #e67e22; }
+    .op:hover { background: #d35400; }
+    .equals { background: #27ae60; grid-column: span 2; }
+    .equals:hover { background: #2ecc71; }
+    .clear { background: #c0392b; grid-column: span 2; }
+    .clear:hover { background: #e74c3c; }
+
+    .upload-label {
+      background: rgba(255,255,255,0.2);
+      padding: 8px 12px;
+      border-radius: 10px;
+      display: inline-block;
+      cursor: pointer;
+    }
+    .upload-label input[type="file"] {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>💱 محول العملات</h1>
+
+    <div class="converter">
+      <input type="number" id="amount" placeholder="أدخل المبلغ">
+      <select id="from">
+        <option value="USD">دولار 🇺🇸</option>
+        <option value="TRY">ليرة تركية 🇹🇷</option>
+        <option value="SYP">ليرة سورية 🇸🇾</option>
+      </select>
+      ⟶
+      <select id="to">
+        <option value="TRY">ليرة تركية 🇹🇷</option>
+        <option value="USD">دولار 🇺🇸</option>
+        <option value="SYP">ليرة سورية 🇸🇾</option>
+      </select>
+      <button id="convert">تحويل</button>
+      <p id="result"></p>
+    </div>
+
+    <hr>
+
+    <h2>🧮 الحاسبة</h2>
+    <div class="calculator">
+      <input type="text" id="calc-display" readonly>
+      <div class="buttons">
+        <button class="btn" data-val="7">7</button>
+        <button class="btn" data-val="8">8</button>
+        <button class="btn" data-val="9">9</button>
+        <button class="btn op" data-val="/">÷</button>
+
+        <button class="btn" data-val="4">4</button>
+        <button class="btn" data-val="5">5</button>
+        <button class="btn" data-val="6">6</button>
+        <button class="btn op" data-val="*">×</button>
+
+        <button class="btn" data-val="1">1</button>
+        <button class="btn" data-val="2">2</button>
+        <button class="btn" data-val="3">3</button>
+        <button class="btn op" data-val="-">−</button>
+
+        <button class="btn" data-val="0">0</button>
+        <button class="btn" data-val=".">.</button>
+        <button class="btn op" data-val="+">+</button>
+        <button class="btn equals">=</button>
+
+        <button class="btn clear">C</button>
+      </div>
+    </div>
+
+    <hr>
+    <button id="change-bg">تغيير الخلفية 🌄</button>
+    <br><br>
+    <label class="upload-label">
+      اختر صورة من جهازك:
+      <input type="file" id="custom-bg" accept="image/*">
+    </label>
+  </div>
+
+  <script>
+    // ===== جلب أسعار الصرف اليومية =====
+    const apiURL = "https://open.er-api.com/v6/latest/USD";
+    let rates = { USD: 1 };
+
+    window.addEventListener('load', () => {
+      fetch(apiURL)
+        .then(res => res.json())
+        .then(data => {
+          if (data.result === "success") rates = data.rates;
+        })
+        .catch(err => console.error("خطأ في الاتصال بالـ API:", err));
+    });
+
+    // ===== محول العملات =====
+    document.getElementById('convert').addEventListener('click', () => {
+      const amount = parseFloat(document.getElementById('amount').value);
+      const from = document.getElementById('from').value;
+      const to = document.getElementById('to').value;
+      const resultEl = document.getElementById('result');
+
+      if (isNaN(amount)) {
+        resultEl.textContent = 'الرجاء إدخال رقم صحيح';
+        return;
+      }
+      if (!rates[from] || !rates[to]) {
+        resultEl.textContent = 'لا تتوفر بيانات لهذه العملة';
+        return;
+      }
+
+      const inUSD = amount / rates[from];
+      const converted = inUSD * rates[to];
+      resultEl.textContent = `${amount} ${from} = ${converted.toFixed(2)} ${to}`;
+    });
+
+    // ===== الحاسبة =====
+    const display = document.getElementById('calc-display');
+    document.querySelectorAll('.btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.val;
+        if (val !== undefined) display.value += val;
+      });
+    });
+    document.querySelector('.equals').addEventListener('click', () => {
+      try { display.value = eval(display.value) || ''; }
+      catch { display.value = 'خطأ'; }
+    });
+    document.querySelector('.clear').addEventListener('click', () => display.value = '');
+
+    // ===== خلفيات ثابتة =====
+    const backgrounds = [
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80",
+      "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1920&q=80",
+      "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=1920&q=80"
+    ];
+
+    let bgIndex = 0;
+    document.getElementById('change-bg').addEventListener('click', () => {
+      bgIndex = (bgIndex + 1) % backgrounds.length; // يعيد من البداية دائماً
+      const nextUrl = backgrounds[bgIndex];
+
+      // تحميل الصورة أولاً لتفادي ظهور الخلفية السوداء
+      const img = new Image();
+      img.onload = () => {
+        document.body.style.backgroundImage = `url('${nextUrl}')`;
+      };
+      img.src = nextUrl;
+    });
+
+    // ===== اختيار صورة من جهازك =====
+    document.getElementById('custom-bg').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = evt => {
+        document.body.style.backgroundImage = `url('${evt.target.result}')`;
+      };
+      reader.readAsDataURL(file);
+    });
+  </script>
+</body>
+</html>
